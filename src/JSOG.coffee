@@ -68,26 +68,50 @@ JSOG.encode = (original, idProperty = '@id', refProperty = '@ref') ->
 # not have any @id or @ref fields
 #
 JSOG.decode = (encoded, idProperty = '@id', refProperty = '@ref') ->
-	# Holds every @id found so far.
-	found = {}
+# Holds every object with an @id.
+	objectsById = {}
+
+	initObjectsById = (encoded) ->
+		if !encoded?
+			return
+		if isArray(encoded)
+			initObjectsById(value) for value in encoded
+		else if typeof encoded == 'object'
+			id = encoded[idProperty]
+			id = id.toString() if id?	# be defensive if someone uses numbers in violation of the spec
+			if id
+				objectsById[id] = encoded
+
+			for key, value of encoded
+				initObjectsById(value)
 
 	doDecode = (encoded) ->
 		#console.log "decoding #{JSON.stringify(encoded)}"
 
 		decodeObject = (encoded) ->
+			id = encoded[idProperty]
 			ref = encoded[refProperty]
-			ref = ref.toString() if ref?	# be defensive if someone uses numbers in violation of the spec
-			if ref?
-				return found[ref]
+
+			if id?
+				id = id.toString()	# be defensive if someone uses numbers in violation of the spec
+			else if ref?
+				id = ref.toString()	# be defensive if someone uses numbers in violation of the spec
+
+			if id?
+				obj = objectsById[id]
+				process = obj[idProperty]?
+			else
+				obj = encoded
+				process = true
+
+			if !process
+				return obj
 
 			result = {}
-
-			id = encoded[idProperty]
-			id = id.toString() if id?	# be defensive if someone uses numbers in violation of the spec
 			if id
-				found[id] = result
+				objectsById[id] = result
 
-			for key, value of encoded
+			for key, value of obj
 				if key != idProperty
 					result[key] = doDecode(value)
 
@@ -105,6 +129,7 @@ JSOG.decode = (encoded, idProperty = '@id', refProperty = '@ref') ->
 		else
 			return encoded
 
+	initObjectsById(encoded)
 	return doDecode(encoded)
 
 #

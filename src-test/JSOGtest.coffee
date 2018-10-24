@@ -104,3 +104,14 @@ describe 'custom references', ->
 	it 'should be decoded properly when using custom references', ->
 		assert !(decoded['@MyId'])?
 		assert !(decoded['@Id'])?
+
+describe 'references appearing before id', ->
+	encoded = {
+		"foo": {"@ref": "0"},
+		"bar": {"@id": "0"}
+	}
+
+	decoded = JSOG.decode(encoded)
+
+	it 'should be resolved', ->
+		assert decoded.foo is decoded.bar
